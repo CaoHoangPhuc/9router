@@ -1,7 +1,8 @@
 {
-  "name": "9router",
-  "version": "0.5.112",
-  "description": "9Router CLI - Start and manage 9Router server",
+  "name": "9router-pc",
+  "version": "0.5.112.pc",
+  "description": "9Router PC Edition - Maintained by Cao Hoang Phuc",
+  "author": "Cao Hoang Phuc",
   "bin": {
     "9router": "./cli.js"
   },
