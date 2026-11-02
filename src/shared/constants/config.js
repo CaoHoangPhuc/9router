@@ -16,8 +16,8 @@ export const GITHUB_CONFIG = {
 // Updater configuration
 export const UPDATER_CONFIG = {
   npmPackageName: "9router",
-  installCmd: "npm i -g 9router",
-  installCmdLatest: "npm i -g 9router@latest --prefer-online",
+  installCmd: "git fetch upstream && git merge upstream/master",
+  installCmdLatest: "git fetch upstream && git merge upstream/master",
   shutdownCountdownSec: 3,
   exitDelayMs: 500,
   statusPort: 20129,

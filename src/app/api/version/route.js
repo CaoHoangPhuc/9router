@@ -31,11 +31,11 @@ function fetchLatestVersion() {
 }
 
 function compareVersions(a, b) {
-  const pa = a.split(".").map(Number);
-  const pb = b.split(".").map(Number);
+  const pa = String(a).split(".").map((s) => parseInt(s, 10) || 0);
+  const pb = String(b).split(".").map((s) => parseInt(s, 10) || 0);
   for (let i = 0; i < 3; i++) {
-    if (pa[i] > pb[i]) return 1;
-    if (pa[i] < pb[i]) return -1;
+    if ((pa[i] || 0) > (pb[i] || 0)) return 1;
+    if ((pa[i] || 0) < (pb[i] || 0)) return -1;
   }
   return 0;
 }

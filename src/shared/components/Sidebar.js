@@ -46,7 +46,6 @@ export default function Sidebar({ onClose }) {
   const [updateInfo, setUpdateInfo] = useState(null);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [shutdownCountdown, setShutdownCountdown] = useState(0);
   const [enableTranslator, setEnableTranslator] = useState(false);
   const { copied, copy } = useCopyToClipboard(2000);
 
@@ -76,32 +75,20 @@ export default function Sidebar({ onClose }) {
     return pathname.startsWith(href);
   };
 
-  // Open manual update panel (no countdown yet — user must click Copy to trigger shutdown)
+  // Open manual update panel
   const handleUpdate = () => {
     setShowUpdateModal(false);
     setIsUpdating(true);
   };
 
-  // Triggered by Copy button inside ManualUpdatePanel: copy + countdown + shutdown
-  const handleCopyAndShutdown = async () => {
+  // Triggered by Copy button inside ManualUpdatePanel: copy git command without shutting down
+  const handleCopySyncCmd = async () => {
     try { await navigator.clipboard.writeText(INSTALL_CMD); } catch { /* clipboard blocked */ }
     copy(INSTALL_CMD);
-    let remaining = UPDATER_CONFIG.shutdownCountdownSec;
-    setShutdownCountdown(remaining);
-    const timer = setInterval(() => {
-      remaining -= 1;
-      setShutdownCountdown(remaining);
-      if (remaining <= 0) {
-        clearInterval(timer);
-        fetch("/api/version/shutdown", { method: "POST" }).catch(() => {});
-        setIsDisconnected(true);
-      }
-    }, 1000);
   };
 
   const handleCancelUpdate = () => {
     setIsUpdating(false);
-    setShutdownCountdown(0);
   };
 
   // Note: legacy updater poll removed. New flow: copy install cmd + shutdown server,
@@ -134,18 +121,18 @@ export default function Sidebar({ onClose }) {
           {updateInfo && (
             <div className="flex flex-col gap-1.5 rounded p-1 -m-1">
               <span className="text-xs font-semibold text-green-600 dark:text-amber-500">
-                ↑ New version available: v{updateInfo.latestVersion}
+                ↑ Upstream v{updateInfo.latestVersion} available
               </span>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowUpdateModal(true)}
                   className="px-2 py-1 rounded bg-green-600 hover:bg-green-700 dark:bg-amber-500 dark:hover:bg-amber-600 text-white text-[11px] font-semibold transition-colors cursor-pointer"
                 >
-                  Update now
+                  Sync Guide
                 </button>
                 <button
                   onClick={() => copy(INSTALL_CMD)}
-                  title="Copy install command"
+                  title="Copy sync command"
                   className="flex-1 text-left hover:opacity-80 transition-opacity cursor-pointer min-w-0"
                 >
                   <code className="block text-[10px] text-green-600/80 dark:text-amber-400/70 font-mono truncate">
@@ -361,10 +348,10 @@ export default function Sidebar({ onClose }) {
         isOpen={showUpdateModal}
         onClose={() => setShowUpdateModal(false)}
         onConfirm={handleUpdate}
-        title="Update 9Router"
-        message={`Show install command for v${updateInfo?.latestVersion || ""}? You can copy it and shutdown to install manually.`}
-        confirmText="Show Command"
-        cancelText="Cancel"
+        title="Upstream Update Notice"
+        message={`New upstream release v${updateInfo?.latestVersion || ""} is available on decolua/9router. Because you are running 9router-pc, do not overwrite with npm. Would you like to view the safe git sync instructions?`}
+        confirmText="View Guide"
+        cancelText="Close"
         variant="primary"
       />
 
@@ -376,10 +363,8 @@ export default function Sidebar({ onClose }) {
               latestVersion={updateInfo?.latestVersion}
               installCmd={INSTALL_CMD}
               copied={copied}
-              onCopyAndShutdown={handleCopyAndShutdown}
+              onCopy={handleCopySyncCmd}
               onCancel={handleCancelUpdate}
-              countdown={shutdownCountdown}
-              isDisconnected={isDisconnected}
             />
           ) : (
             <div className="text-center p-8">
@@ -403,51 +388,42 @@ Sidebar.propTypes = {
   onClose: PropTypes.func,
 };
 
-function ManualUpdatePanel({ latestVersion, installCmd, copied, onCopyAndShutdown, onCancel, countdown, isDisconnected }) {
-  const isCountingDown = countdown > 0;
+function ManualUpdatePanel({ latestVersion, installCmd, copied, onCopy, onCancel }) {
   return (
-    <div className="w-full max-w-lg rounded-xl bg-neutral-900/95 border border-white/10 p-6 text-white">
+    <div className="w-full max-w-lg rounded-xl bg-neutral-900/95 border border-white/10 p-6 text-white shadow-2xl">
       <div className="flex items-center gap-3 mb-4">
         <div className="flex items-center justify-center size-11 rounded-full bg-amber-500/20 text-amber-400">
-          <span className="material-symbols-outlined text-[24px]">content_copy</span>
+          <span className="material-symbols-outlined text-[24px]">sync</span>
         </div>
         <div>
-          <h2 className="text-lg font-semibold">Update 9Router{latestVersion ? ` to v${latestVersion}` : ""}</h2>
+          <h2 className="text-lg font-semibold">Upstream Release Available{latestVersion ? `: v${latestVersion}` : ""}</h2>
           <p className="text-xs text-white/60">
-            {isDisconnected
-              ? "Server stopped. Paste the command into a terminal to install."
-              : isCountingDown
-                ? `Command copied. Server will stop in ${countdown}s...`
-                : "Click the button below to copy the install command and shutdown."}
+            A new release has been published on decolua/9router.
           </p>
         </div>
       </div>
 
-      <p className="text-sm text-white/80 mb-2">Install command:</p>
-      <div className="w-full px-3 py-2 rounded bg-white/5 mb-4">
+      <p className="text-sm text-white/80 mb-2">Recommended Git sync command:</p>
+      <div className="w-full px-3 py-2 rounded bg-white/5 mb-4 border border-white/10">
         <code className="text-xs font-mono text-amber-400 break-all">{installCmd}</code>
       </div>
 
-      <ol className="text-xs text-white/70 space-y-1 list-decimal list-inside mb-4">
-        <li>Click <strong>Copy & Shutdown</strong> below.</li>
-        <li>Paste the command into your terminal and press Enter.</li>
-        <li>Run <code className="px-1 rounded bg-white/10 text-green-400">9router</code> again after install.</li>
+      <ol className="text-xs text-white/70 space-y-1.5 list-decimal list-inside mb-5">
+        <li>Open a terminal in your <code className="px-1.5 py-0.5 rounded bg-white/10 text-amber-300">~/9router</code> directory.</li>
+        <li>Run the command above to pull & merge upstream changes.</li>
+        <li>Preserve your custom PC Edition patches and rebuild with:
+          <code className="block mt-1 px-2 py-1 rounded bg-black/40 text-green-400 font-mono text-[11px]">npm run build && cd cli && npm run build</code>
+        </li>
       </ol>
 
-      {isDisconnected ? (
-        <Button variant="secondary" fullWidth onClick={() => globalThis.location.reload()}>
-          Reload Page
+      <div className="flex gap-2 justify-end">
+        <Button variant="secondary" onClick={onCancel}>
+          Close
         </Button>
-      ) : (
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={onCancel} disabled={isCountingDown}>
-            Cancel
-          </Button>
-          <Button variant="primary" fullWidth onClick={onCopyAndShutdown} disabled={isCountingDown}>
-            {copied ? "✓ Copied — shutting down..." : isCountingDown ? `Shutting down in ${countdown}s` : "Copy & Shutdown"}
-          </Button>
-        </div>
-      )}
+        <Button variant="primary" onClick={onCopy}>
+          {copied ? "✓ Copied Git Command!" : "Copy Git Command"}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -456,8 +432,6 @@ ManualUpdatePanel.propTypes = {
   latestVersion: PropTypes.string,
   installCmd: PropTypes.string.isRequired,
   copied: PropTypes.bool,
-  onCopyAndShutdown: PropTypes.func.isRequired,
+  onCopy: PropTypes.func.isRequired,
   onCancel: PropTypes.func.isRequired,
-  countdown: PropTypes.number,
-  isDisconnected: PropTypes.bool,
 };
