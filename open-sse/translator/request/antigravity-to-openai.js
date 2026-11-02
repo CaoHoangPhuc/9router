@@ -116,7 +116,7 @@ function normalizeSchemaTypes(schema) {
     if (
       PROTOJSON_INT64_SCHEMA_KEYS.has(key) &&
       typeof value === "string" &&
-      /^\\d+$/.test(value.trim())
+      /^\d+$/.test(value.trim())
     ) {
       const parsed = Number(value);
       // Avoid silently rounding ProtoJSON int64 values that exceed JS safe integers.
