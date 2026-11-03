@@ -12,6 +12,7 @@ import {
 
 export default function TokenSaverClient() {
   const [rtkEnabled, setRtkEnabledState] = useState(true);
+  const [toonEnabled, setToonEnabledState] = useState(false);
   const [headroomEnabled, setHeadroomEnabled] = useState(false);
   const [headroomUrl, setHeadroomUrl] = useState("http://localhost:8787");
   const [headroomTimeoutMs, setHeadroomTimeoutMs] = useState(3000);
@@ -104,6 +105,19 @@ export default function TokenSaverClient() {
       if (res.ok) setRtkEnabledState(value);
     } catch (error) {
       console.log("Error updating rtkEnabled:", error);
+    }
+  };
+
+  const handleToonEnabled = async (value) => {
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ toonEnabled: value }),
+      });
+      if (res.ok) setToonEnabledState(value);
+    } catch (error) {
+      console.log("Error updating toonEnabled:", error);
     }
   };
 
@@ -432,6 +446,7 @@ export default function TokenSaverClient() {
         if (res.ok) {
           const data = await res.json();
           setRtkEnabledState(data.rtkEnabled !== false);
+          setToonEnabledState(!!data.toonEnabled);
           setHeadroomEnabled(!!data.headroomEnabled);
           setHeadroomUrl(data.headroomUrl || "http://localhost:8787");
           if (typeof data.headroomTimeoutMs === "number") setHeadroomTimeoutMs(data.headroomTimeoutMs);
@@ -517,6 +532,28 @@ export default function TokenSaverClient() {
           <Toggle
             checked={rtkEnabled}
             onChange={() => handleRtkEnabled(!rtkEnabled)}
+          />
+        </div>
+        <div className="flex items-center justify-between py-4 border-b border-border gap-4">
+          <div className="min-w-0 flex-1">
+            <p className="font-medium">
+              Compress structured data{" "}
+              <a
+                href="https://github.com/toon-format/toon"
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs font-normal text-primary underline hover:opacity-80"
+              >
+                (TOON)
+              </a>
+            </p>
+            <p className="text-sm text-text-muted">
+              Database rows & JSON arrays in tool output → 30-60% fewer tokens
+            </p>
+          </div>
+          <Toggle
+            checked={toonEnabled}
+            onChange={() => handleToonEnabled(!toonEnabled)}
           />
         </div>
         <div className="flex items-center justify-between py-4 gap-4 flex-wrap">
