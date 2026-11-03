@@ -327,5 +327,5 @@ export function formatToonLog(stats) {
   if (!stats || !stats.hits || stats.hits.length === 0) return null;
   const saved = stats.bytesBefore - stats.bytesAfter;
   const pct = stats.bytesBefore > 0 ? ((saved / stats.bytesBefore) * 100).toFixed(1) : "0";
-  return `[TOON] saved ${saved} chars / ${stats.bytesBefore} (${pct}%) hits=${stats.hits.length}`;
+  return `saved ${saved} chars / ${stats.bytesBefore} (${pct}%) hits=${stats.hits.length}`;
 }

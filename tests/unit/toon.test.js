@@ -313,7 +313,7 @@ describe("TOON Token Saver", () => {
         bytesAfter: 400,
         hits: [{ shape: "openai-tool", saved: 600 }]
       });
-      expect(line).toBe("[TOON] saved 600 chars / 1000 (60.0%) hits=1");
+      expect(line).toBe("saved 600 chars / 1000 (60.0%) hits=1");
     });
   });
 });

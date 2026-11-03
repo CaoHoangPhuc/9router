@@ -147,7 +147,7 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
     ? compressToonMessages(body, tokenSaverEnabled && toonEnabled)
     : null;
   const preTranslateToonLine = formatToonLog(preTranslateToon);
-  if (preTranslateToonLine) console.log(preTranslateToonLine);
+  if (preTranslateToonLine) log?.info?.("TOON", preTranslateToonLine);
 
   const clientRequestedStreaming = body.stream === true || sourceFormat === FORMATS.ANTIGRAVITY || sourceFormat === FORMATS.GEMINI || sourceFormat === FORMATS.GEMINI_CLI;
   const providerRequiresStreaming = PROVIDERS[provider]?.forceStream === true;
