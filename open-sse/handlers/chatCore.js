@@ -143,9 +143,7 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
   const preTranslateRtkLine = formatRtkLog(preTranslateRtk);
   if (preTranslateRtkLine) console.log(preTranslateRtkLine);
 
-  const preTranslateToon = provider === "cursor"
-    ? compressToonMessages(body, tokenSaverEnabled && toonEnabled)
-    : null;
+  const preTranslateToon = compressToonMessages(body, tokenSaverEnabled && toonEnabled);
   const preTranslateToonLine = formatToonLog(preTranslateToon);
   if (preTranslateToonLine) log?.info?.("TOON", preTranslateToonLine);
 
@@ -292,7 +290,7 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
   // TOON: compress uniform JSON arrays in tool_result content.
   const toonStats = preTranslateToon || compressToonMessages(translatedBody, tokenSaverEnabled && toonEnabled);
   const toonLine = formatToonLog(toonStats);
-  if (toonLine) log?.info?.("TOON", toonLine);
+  if (toonLine && !preTranslateToonLine) log?.info?.("TOON", toonLine);
 
   // Headroom: optional external proxy compression; fail open if proxy is absent.
   const headroomDiagnostics = {};
@@ -310,7 +308,9 @@ export async function handleChatCore({ body, modelInfo, credentials, log, onCred
   const xf = [];
 
   if (rtkStats?.hits?.length) xf.push(`RTK:${rtkStats.hits.length}`);
-  if (toonStats?.hits?.length) xf.push(`TOON:${toonStats.hits.length}`);
+  if (tokenSaverEnabled && toonEnabled) {
+    xf.push(toonStats?.hits?.length ? `TOON:${toonStats.hits.length}` : "TOON");
+  }
 
   // Caveman: inject terse-style system prompt
   if (tokenSaverEnabled && cavemanEnabled && cavemanLevel) {

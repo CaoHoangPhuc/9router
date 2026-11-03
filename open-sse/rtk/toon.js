@@ -180,8 +180,8 @@ export function compressToonMessages(body, enabled) {
       const msg = items[i];
       if (!msg) continue;
 
-      // Shape 4: OpenAI Responses — top-level function_call_output
-      if (msg.type === "function_call_output") {
+      // Shape 4: OpenAI Responses — top-level function_call_output or custom_tool_call_output
+      if (msg.type === "function_call_output" || msg.type === "custom_tool_call_output") {
         if (typeof msg.output === "string") {
           const res = tryCompressText(msg.output, "openai-responses-string");
           if (res) {
@@ -193,7 +193,7 @@ export function compressToonMessages(body, enabled) {
         } else if (Array.isArray(msg.output)) {
           for (let k = 0; k < msg.output.length; k++) {
             const part = msg.output[k];
-            if (part && part.type === "input_text" && typeof part.text === "string") {
+            if (part && (part.type === "input_text" || part.type === "text") && typeof part.text === "string") {
               const res = tryCompressText(part.text, "openai-responses-array");
               if (res) {
                 stagedEdits.push(() => { part.text = res.compressed; });

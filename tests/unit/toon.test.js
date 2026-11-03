@@ -299,6 +299,25 @@ describe("TOON Token Saver", () => {
       expect(stats.hits[0].shape).toBe("openai-responses-string");
       expect(body.input[0].output).toContain("[5]{id,username,email,role,status,score}:");
     });
+
+    it("compresses OpenAI Responses custom_tool_call_output (Codex exec output)", () => {
+      const originalJson = JSON.stringify(makeDbRows(5), null, 2);
+      const body = {
+        input: [
+          {
+            type: "custom_tool_call_output",
+            call_id: "call_custom_1",
+            output: originalJson
+          }
+        ]
+      };
+
+      const stats = compressToonMessages(body, true);
+      expect(stats).not.toBeNull();
+      expect(stats.hits.length).toBe(1);
+      expect(stats.hits[0].shape).toBe("openai-responses-string");
+      expect(body.input[0].output).toContain("[5]{id,username,email,role,status,score}:");
+    });
   });
 
   describe("formatToonLog", () => {
