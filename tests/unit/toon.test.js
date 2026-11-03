@@ -4,7 +4,8 @@ import {
   isEligibleData,
   convertToToon,
   compressToonMessages,
-  formatToonLog
+  formatToonLog,
+  hasForbiddenKeys
 } from "../../open-sse/rtk/toon.js";
 
 function makeDbRows(count = 5) {
@@ -23,8 +24,8 @@ function makeDbRows(count = 5) {
 }
 
 describe("TOON Token Saver", () => {
-  describe("isArrayOfUniformObjects", () => {
-    it("returns true for uniform object array with >= 3 items", () => {
+  describe("isArrayOfUniformObjects (Strict Uniformity & Safety)", () => {
+    it("returns true for uniform object array with >= 3 items and identical schemas", () => {
       const rows = makeDbRows(4);
       expect(isArrayOfUniformObjects(rows)).toBe(true);
     });
@@ -37,6 +38,31 @@ describe("TOON Token Saver", () => {
     it("returns false for primitive arrays", () => {
       expect(isArrayOfUniformObjects([1, 2, 3, 4])).toBe(false);
       expect(isArrayOfUniformObjects(["a", "b", "c"])).toBe(false);
+    });
+
+    it("returns false for heterogeneous arrays with mismatched schemas", () => {
+      const mixed = [
+        { id: 1, name: "Alice" },
+        { id: 2, title: "Manager" },
+        { id: 3, age: 30 }
+      ];
+      expect(isArrayOfUniformObjects(mixed)).toBe(false);
+    });
+
+    it("returns false if any array element is null or non-object", () => {
+      const withNull = [
+        { id: 1, name: "A" },
+        null,
+        { id: 3, name: "C" }
+      ];
+      expect(isArrayOfUniformObjects(withNull)).toBe(false);
+
+      const withString = [
+        { id: 1, name: "A" },
+        "not an object",
+        { id: 3, name: "C" }
+      ];
+      expect(isArrayOfUniformObjects(withString)).toBe(false);
     });
 
     it("returns false when items contain config/manifest keys", () => {
@@ -65,9 +91,30 @@ describe("TOON Token Saver", () => {
       ];
       expect(isArrayOfUniformObjects(diffLike)).toBe(false);
     });
+
+    it("returns false when an item contains a nested error object", () => {
+      const nestedError = [
+        { id: 1, diag: { stack: "Error at line 1" } },
+        { id: 2, diag: { stack: "Error at line 2" } },
+        { id: 3, diag: { stack: "Error at line 3" } }
+      ];
+      expect(isArrayOfUniformObjects(nestedError)).toBe(false);
+    });
   });
 
-  describe("isEligibleData", () => {
+  describe("hasForbiddenKeys", () => {
+    it("detects forbidden error keys at any depth", () => {
+      expect(hasForbiddenKeys({ error: "Failed" })).toBe(true);
+      expect(hasForbiddenKeys({ errors: ["Bad"] })).toBe(true);
+      expect(hasForbiddenKeys({ nested: { stack: "at foo" } })).toBe(true);
+    });
+
+    it("returns false for clean data objects", () => {
+      expect(hasForbiddenKeys({ id: 1, name: "Alice", active: true })).toBe(false);
+    });
+  });
+
+  describe("isEligibleData (Adversarial & Edge Cases)", () => {
     it("accepts root array of uniform objects", () => {
       expect(isEligibleData(makeDbRows(5))).toBe(true);
     });
@@ -78,6 +125,18 @@ describe("TOON Token Saver", () => {
         page: 1,
         results: makeDbRows(5)
       })).toBe(true);
+    });
+
+    it("rejects object with status: 'error' or 'failed'", () => {
+      expect(isEligibleData({
+        status: "error",
+        rows: makeDbRows(5)
+      })).toBe(false);
+
+      expect(isEligibleData({
+        status: "FAILED",
+        rows: makeDbRows(5)
+      })).toBe(false);
     });
 
     it("rejects package.json structure", () => {
@@ -93,6 +152,12 @@ describe("TOON Token Saver", () => {
       expect(isEligibleData({
         compilerOptions: { target: "es2022" },
         include: ["src"]
+      })).toBe(false);
+    });
+
+    it("rejects error response objects", () => {
+      expect(isEligibleData({
+        error: { code: 404, message: "Not found" }
       })).toBe(false);
     });
 
@@ -138,7 +203,7 @@ describe("TOON Token Saver", () => {
     });
   });
 
-  describe("compressToonMessages", () => {
+  describe("compressToonMessages (Transactional Atomicity)", () => {
     it("returns null when enabled is false", () => {
       const body = {
         messages: [{
@@ -148,7 +213,6 @@ describe("TOON Token Saver", () => {
       };
       const stats = compressToonMessages(body, false);
       expect(stats).toBeNull();
-      // content must remain untouched
       expect(body.messages[0].content).toContain("user_1");
     });
 
@@ -213,8 +277,7 @@ describe("TOON Token Saver", () => {
       };
 
       const stats = compressToonMessages(body, true);
-      expect(stats).not.toBeNull();
-      expect(stats.hits.length).toBe(0);
+      expect(stats).toBeNull();
       expect(body.messages[0].content[0].content).toBe(errorJson);
     });
 
@@ -250,7 +313,7 @@ describe("TOON Token Saver", () => {
         bytesAfter: 400,
         hits: [{ shape: "openai-tool", saved: 600 }]
       });
-      expect(line).toBe("[TOON] saved 600B / 1000B (60.0%) hits=1");
+      expect(line).toBe("[TOON] saved 600 chars / 1000 (60.0%) hits=1");
     });
   });
 });
